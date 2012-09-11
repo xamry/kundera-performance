@@ -11,14 +11,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
-import java.util.HashMap;
+import java.util.Date;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 import com.mongodb.DB;
 import com.mongodb.Mongo;
@@ -33,6 +36,18 @@ public class MongoRunner
 {
     static Runtime runtime = Runtime.getRuntime();
 
+    private static String kundera_native_delta_bulk;
+    private static String kundera_springData_delta_bulk;
+    private static String kundera_morphia_delta_bulk;
+
+    private static String kundera_native_delta_concurrent;
+    private static String kundera_springData_delta_concurrent;
+    private static String kundera_morphia_delta_concurrent;
+
+    private static String kundera_native_delta_concurrent_bulk;
+    private static String kundera_springData_delta_concurrent_bulk;
+    private static String kundera_morphia_delta_concurrent_bulk;
+
     /**
      * The main method.
      * 
@@ -44,14 +59,20 @@ public class MongoRunner
      */
     public static void main(String[] argss) throws IOException, InterruptedException
     {
+//    	postBuild();
+    	
         int i;
-        String b[] = { "1", "1000", "4000"/*, "40000", "100000", "1000000"*/};
-        String c[] = { "1", "10", "100", "1000"/*, "10000", "40000", "50000", "100000"*/};
-        String cb[] = { "10"/*, "100", "1000"*/};
-        
+        String b[] = { "1", "1000", "4000", "40000", "100000", "1000000"};
+        String c[] = { "1", "10", "100", "1000", "10000", "40000", "50000", "100000"};
+        String cb[] = { "10", "100", "1000"};
+
+//    	String b[] = { "1", "1000", "4000"/*, "40000", "100000", "1000000"*/};
+//        String c[] = { "1", "10", "100", "1000"/*, "10000", "40000", "50000", "100000"*/};
+//        String cb[] = { "10"/*, "100", "1000"*/};
+
         String clientArr[] = {"kundera","native", "springData", "morphia"};
         String runType[] = {"b","c","cb"};
-		startMongoServer();
+//		startMongoServer();
         for(String type : runType)
  {
 			for (String client : clientArr) {
@@ -113,16 +134,17 @@ public class MongoRunner
      * 
      * @param dbname
      *            the dbname
-     * @throws UnknownHostException
-     *             the unknown host exception
      * @throws InterruptedException
+     * @throws IOException 
      */
-    private static void dropDatabase(String dbname) throws UnknownHostException, InterruptedException
+    private static void dropDatabase(String dbname) throws InterruptedException, IOException
     {
         Mongo m = new Mongo();
         DB db = m.getDB(dbname);
         db.dropDatabase();
         TimeUnit.SECONDS.sleep(5);
+        System.out.println("On cleanup");
+        runtime.exec("rm -rf /data/db/*").waitFor();
     }
 
     /**
@@ -137,7 +159,7 @@ public class MongoRunner
      */
     private static void startMongoServer() throws IOException, InterruptedException
     {
-        runtime.exec("/home/impadmin/vivek/mongodb-linux-i686-1.8.4/bin/mongod").waitFor();
+     //   runtime.exec("/home/impadmin/vivek/mongodb-linux-i686-1.8.4/bin/mongod").waitFor();
 //        TimeUnit.SECONDS.sleep(5);
     }
 
@@ -194,18 +216,65 @@ public class MongoRunner
         System.out.println("Deleted File" + mongodbLockFile);
     }
 
+  
+    private static void postBuild()
+    {
+        String host = "mail2.impetus.co.in";
+        int port = 465;
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+//        props.put("mail.smtp.port", "465");
+        props.put("mail.smtp.host", host);
+
+        JavaMailSenderImpl emailSender = new JavaMailSenderImpl();
+        emailSender.setHost(host);
+//        emailSender.setPort(port);
+        emailSender.setUsername("vivek.mishra@impetus.co.in");
+        emailSender.setPassword("xxxx");
+        emailSender.setJavaMailProperties(props);
+        SimpleMailMessage mail = new SimpleMailMessage();
+        mail.setTo(new String[]{"vivek.mishra@impetus.co.in","amresh.singh@impetus.co.in","kuldeep.mishra@impetus.co.in","vivek.shrivastava@impetus.co.in"});
+        mail.setFrom("vivek.mishra@impetus.co.in");
+//        mail.se
+        mail.setSubject("kundera-mongo-performance Delta");
+//        String url = "http://localhost:8080/HealthTrip/activate/activate.action?token="+model.getToken();
+//        mail.setText("Thank you for registering with us, please confirm your activation by clicking link given below:"+"\n"
+//                + url);
+        
+		mail.setText(".......................Bulk: .......................\n" + "Kundera/Native Performance Delta ==>"
+				+ kundera_native_delta_bulk + "\n"
+				+ "Kundera/SpringData Performance Delta ==>"
+				+ kundera_springData_delta_bulk + "\n"
+				+ "Kundera/Morphia Performance Delta ==>"
+				+ kundera_morphia_delta_bulk + " \n .......................Concurrent:....................... \n"
+				+ "Kundera/Native Performance Delta ==>"
+				+ kundera_native_delta_concurrent + "\n"
+				+ "Kundera/SpringData Performance Delta ==>"
+				+ kundera_springData_delta_concurrent + "\n"
+				+ "Kundera/Morphia Performance Delta ==>"
+				+ kundera_morphia_delta_concurrent + " \n .......................ConcurrentBulk:....................... \n"
+				+ "Kundera/Native Performance Delta ==>"
+				+ kundera_native_delta_concurrent_bulk + "\n"
+				+ "Kundera/SpringData Performance Delta ==>"
+				+ kundera_springData_delta_concurrent_bulk + "\n"
+				+ "Kundera/Morphia Performance Delta ==>"
+				+ kundera_morphia_delta_concurrent_bulk);
+        emailSender.send(mail);
+    }
+
     
     private static void onGenerateDelta(Map<String, Long> profiledData) throws FileNotFoundException, IOException
     {
-//  	  String b[] = { "1", "1000", "4000", "40000", "100000", "1000000" };
-//      String c[] = { "1", "10", "100", "1000", "10000", "40000", "50000", "100000" };
-//      String cb[] = { "10", "100", "1000" };
+  	  String b[] = { "1", "1000", "4000", "40000", "100000", "1000000" };
+      String c[] = { "1", "10", "100", "1000", "10000", "40000", "50000", "100000" };
+      String cb[] = { "10", "100", "1000" };
 
-    	String b[] = { "1", "1000", "4000"/*, "40000", "100000", "1000000"*/};
-        String c[] = { "1", "10", "100", "1000"/*, "10000", "40000", "50000", "100000"*/};
-        String cb[] = { "10"/*, "100", "1000"*/};
+//    	String b[] = { "1", "1000", "4000"/*, "40000", "100000", "1000000"*/};
+//        String c[] = { "1", "10", "100", "1000"/*, "10000", "40000", "50000", "100000"*/};
+//        String cb[] = { "10"/*, "100", "1000"*/};
         
-    	String fileName = "performance_mongo.xls";
+    	String fileName = "performance_mongo" + new Date().getDate() + "_" + System.currentTimeMillis() + ".xls";
        HSSFWorkbook workBook = new HSSFWorkbook();
        workBook = generateDelta(b, profiledData, workBook, "Bulk", "b");
        workBook = generateDelta(c, profiledData, workBook, "Concurrent", "c");
@@ -227,7 +296,7 @@ public class MongoRunner
 	                }
 	            }
 	        }
-
+	        postBuild();
     }
 
     private static  HSSFWorkbook generateDelta(String[] type, Map<String, Long> profiledData, HSSFWorkbook workBook, String sheetName, String keyType) throws FileNotFoundException, IOException
@@ -282,19 +351,53 @@ public class MongoRunner
 			// populate delta.
 			HSSFCell kundera_native = dataRow.createCell(clientCnt++);
 			kundera_native.setCellValue(((cellValArr[0]-cellValArr[1])/cellValArr[1]) * 100);
+		
+			storeDelta(Key.valueOf(keyType), ((cellValArr[0]-cellValArr[1])/cellValArr[1]) * 100 + "%",((cellValArr[0]-cellValArr[2])/cellValArr[2]) * 100 + "%", ((cellValArr[0]-cellValArr[3])/cellValArr[3]) * 100 + "%");
+//			kundera_native_delta = ;
 			
 			HSSFCell kundera_springdata = dataRow.createCell(clientCnt++);
 			kundera_springdata.setCellValue(((cellValArr[0]-cellValArr[2])/cellValArr[2]) * 100);
-
+//			kundera_springData_delta = ((cellValArr[0]-cellValArr[2])/cellValArr[2]) * 100 + "%";
+			
 			HSSFCell kundera_morphia = dataRow.createCell(clientCnt);
 			kundera_morphia.setCellValue(((cellValArr[0]-cellValArr[3])/cellValArr[3]) * 100);
-
+//			kundera_morphia_delta = ((cellValArr[0]-cellValArr[3])/cellValArr[3]) * 100 + "%";
 			nextRowCount++;
 		}
 		
 		return workBook;
 		
 	}
+    
+    enum Key
+    {
+    	c,b,cb
+    }
+    
+    private static void storeDelta(final Key key, String nativeDelta, String springDelta, String morphia)
+    {
+    	switch (key) {
+		case c:
+			kundera_native_delta_concurrent = nativeDelta;
+			kundera_springData_delta_concurrent = springDelta;
+			kundera_morphia_delta_concurrent = morphia;
+			break;
+		case b:
+			kundera_native_delta_bulk = nativeDelta;
+			kundera_springData_delta_bulk = springDelta;
+			kundera_morphia_delta_bulk = morphia;
+			break;
+		case cb:
+			kundera_native_delta_concurrent_bulk = nativeDelta;
+			kundera_springData_delta_concurrent_bulk = springDelta;
+			kundera_morphia_delta_concurrent_bulk = morphia;
+			break;
+
+		default:
+			break;
+		}
+    	
+    }
 
 	private static HSSFSheet initSheet(HSSFWorkbook workbook, String sheetName) {
 		HSSFSheet sheet = workbook.createSheet(sheetName);

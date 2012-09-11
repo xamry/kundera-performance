@@ -70,7 +70,7 @@ public class KunderaPerformanceRunner {
 	             
 	        //TODO add Task executor to control threads and close data
 	        long t2 = System.currentTimeMillis();
-	        System.out.println("Kundera Performance: MaxinsertUsers(" + noOfRecords + "), total number of records/thread(" + noOfThreads + ")>>>\t" + (t2 - t1));
+	        System.out.println("Kundera Performance: MaxinsertUsers(" + noOfRecords + "), total number of records/thread(" + noOfThreads + ")>>>\t" + (t2 - t1) + " client>>>" + client);
 	        profiler.put(client+":"+type+":"+noOfRecords+":"+noOfThreads, (t2-t1));
 
 	        }catch (Exception e) {
